@@ -1,0 +1,307 @@
+
+#include <iostream>
+#include <windows.h> // for sleep() function
+#include <utility>
+#include <vector>
+#include <map>
+#include <tuple>
+#include <thread>
+
+int player_x = 1;
+int player_y = 1;
+int monster1_x = 13;
+int monster1_y = 6;
+int state = 0;
+bool flee = false;
+bool chase = true;
+static std::vector<std::vector<bool>> bitmap = { 
+{ false, false, false, false, false, false, false, false, false, false,false, false, false, false, false },
+{ false, true, true, true, true, true, false, false, false, true, true, true, true, true, false },
+{ false, true, false, true, false, true, true, false, true, true, false, true, false, true, false },
+{ false, true, false, true, false, false, true, false, true, false, false, true, false, true, false },
+{ false, true, false, true, true, false, true, false, true, false, true, true, false, true, false },
+{ false, true, false, false, true, true, true, true, true, true, true, false, false, true, false },
+{ false, true, true, true, true, false, false, true, false, false, true, true, true, true, false },
+{ false, true, false, false, true, false, true, true, true, false, true, false, false, true, false },
+{ false, true, false, true, true, false, false, false, false, false, true, true, false, true, false },
+{ false, true, true, true, false, false, false, true, false, false, false, true, true, true, false },
+{ false, true, false, true, false, true, true, true, true, true, false, true, false, true, false },
+{ false, true, false, true, true, true, false, true, false, true, true, true, false, true, false },
+{ false, true, false, false, true, false, false, true, false, false, true, false, false, true, false },
+{ false, true, true, true, true, true, true, true, true, true, true, true, true, true, false },
+{ false, false, false, false, false, false, false, false, false, false,false, false, false, false, false }
+};
+
+std::vector<std::tuple<int, int, int>> paths_monster1;
+std::vector<std::tuple<int, int, int>> filteredpaths;
+
+void initializemove(int position_y, int position_x, std::vector<std::tuple<int, int, int>>& moves) {
+	moves.emplace_back(0, position_y, position_x);
+}
+
+void removecells2(std::vector<std::tuple<int, int, int>>& paths, int count) {
+	for (int i = paths.size() - 1; i >= 0; i--) {
+		if (std::get<0>(paths[i]) == count - 1) {
+			break;
+		}
+		else if (std::get<0>(paths[i]) == count) {
+			for (int j = 0; j < i; j++) {
+				if (std::get<1>(paths[j]) == std::get<1>(paths[i]) && std::get<2>(paths[j]) == std::get<2>(paths[i])) {
+					paths.erase(paths.begin() + i);
+					break;
+				}
+			}
+		}
+	}
+}
+
+void removecells1(std::vector<std::tuple<int, int, int>>& paths, int count) {
+	for (int i = (paths.size() - 1); i >= 0; i--) {
+		if (std::get<0>(paths[i]) == count - 1) {
+			break;
+		}
+		else if (std::get<0>(paths[i]) == count) {
+			if (bitmap[std::get<1>(paths[i])][std::get<2>(paths[i])] == false) {
+				paths.erase(paths.begin() + i);
+			}
+		}
+	}
+}
+
+bool targetreached(std::vector<std::tuple<int, int, int>>& paths, int target_y, int target_x, int count) {
+	for (int i = paths.size() - 1; i >= 0; i--) {
+		if (std::get<0>(paths[i]) == count - 1) {
+			break;
+		}
+		else if (std::get<0>(paths[i]) == count) {
+			if (std::get<1>(paths[i]) == target_y && std::get<2>(paths[i]) == target_x) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+void pathfinding(int target_y, int target_x, std::vector<std::tuple<int, int, int>>& paths) {
+	int count = 0;
+	while (!targetreached(paths, target_y, target_x, count)) {
+		for (int i = paths.size() - 1; i >= 0; i--) {
+			if (std::get<0>(paths[i]) == count - 1) {
+				break;
+			}
+			else if (std::get<0>(paths[i]) == count) {
+				/*if (bitmap[std::get<1>(paths[i]) + 1][std::get<2>(paths[i])] == true) {
+
+				}*/
+				paths.emplace_back(count + 1, std::get<1>(paths[i]) + 1, std::get<2>(paths[i]));
+				paths.emplace_back(count + 1, std::get<1>(paths[i]) - 1, std::get<2>(paths[i]));
+				paths.emplace_back(count + 1, std::get<1>(paths[i]), std::get<2>(paths[i]) - 1);
+				paths.emplace_back(count + 1, std::get<1>(paths[i]), std::get<2>(paths[i]) + 1);
+			}
+
+		}
+		removecells1(paths, count + 1);
+		removecells2(paths, count + 1);
+		count++;
+
+	}
+}
+
+std::vector<std::tuple<int, int, int>> pathfinding2(std::vector<std::vector<bool>> bitmap, std::vector<std::tuple<int, int, int>> paths, int target_y, int target_x) {
+	std::vector<std::tuple<int, int, int>> filteredpaths;
+	int turn = std::get<0>(paths.back());
+	filteredpaths.emplace_back(turn, target_y, target_x);
+	for (int i = paths.size() - 1; i >= 0; i--) {
+		if (std::get<0>(paths[i]) == std::get<0>(filteredpaths.back()) - 1) {
+			if (abs(std::get<1>(paths[i]) - std::get<1>(filteredpaths.back())) == 1 && abs(std::get<2>(paths[i]) - std::get<2>(filteredpaths.back())) == 0) {
+				filteredpaths.emplace_back(paths[i]);
+			}
+			else if (abs(std::get<1>(paths[i]) - std::get<1>(filteredpaths.back())) == 0 && abs(std::get<2>(paths[i]) - std::get<2>(filteredpaths.back())) == 1) {
+				filteredpaths.emplace_back(paths[i]);
+			}
+		}
+	}
+	return filteredpaths;
+}
+
+void switchbool(bool &a, bool &b) {
+	if (a) {
+		a = false;
+		b = true;
+	}
+	if (b) {
+		b = false;
+		a = true;
+	}
+}
+
+void statechange() {
+	while (true) {
+		if (state != 0) {
+			if ((state - 15) % 21 == 0) {
+				switchbool(chase, flee);
+			}
+			if (state % 21 == 0) {
+				switchbool(chase, flee);
+			}
+		}
+		Sleep(50);
+			
+	}
+}
+
+
+void pathfindingflee() {
+	while (true) {
+		while (flee) {
+			initializemove(monster1_y, monster1_x, paths_monster1);
+			pathfinding(13, 13, paths_monster1);
+			paths_monster1 = pathfinding2(bitmap, paths_monster1, 13, 13);
+			if (paths_monster1.size() < 2) {
+				state++;
+				if (state % 21 == 0) {
+					flee = false;
+					paths_monster1.clear();
+					chase = true;
+					break;
+				}
+				
+				Sleep(350);
+			}
+			else {
+				for (int i = paths_monster1.size() - 2; i >= 0; i--) {
+					if (state % 21 == 0) {
+						flee = false;
+						break;
+					}
+					monster1_y = std::get<1>(paths_monster1[i]);
+					monster1_x = std::get<2>(paths_monster1[i]);
+					Sleep(350);
+					state++;
+				}
+				if (flee == false) {
+					paths_monster1.clear();
+					chase = true;
+				}
+				else if (flee == true) {
+					paths_monster1.clear();
+				}
+			}
+		}	
+	}	
+}
+
+void pathfindingchase() {
+	while (true) {
+		while (chase) {
+			initializemove(monster1_y, monster1_x, paths_monster1);
+			pathfinding(player_y, player_x, paths_monster1);
+			paths_monster1 = pathfinding2(bitmap, paths_monster1, player_y, player_x);
+			int counter = 0;
+			for (int i = paths_monster1.size() - 2; i >= 0; i--) {
+				/*if ((state - 15) % 21 == 0) {
+					chase = false;
+					break;
+				}*/
+				if (counter == 6) {
+					break;
+				}
+				monster1_y = std::get<1>(paths_monster1[i]);
+				monster1_x = std::get<2>(paths_monster1[i]);
+				Sleep(350);
+				counter++;
+				state++;
+			}
+			if (chase == false) {
+				paths_monster1.clear();
+				flee = true;
+			}
+			else if (chase == true) {
+				paths_monster1.clear();
+			}
+			
+		}
+	}
+}
+
+void update_screen() {
+	while (true) {
+		system("cls"); // clear the screen
+		std::cout << "\033[1;1H"; // move cursor to top-left corner
+
+		for (int i = 0; i < 15; i++) {
+			for (int k = 0; k < 15; k++) {
+				if (player_y == i && player_x == k || monster1_y == i && monster1_x == k) {
+					if (monster1_y == i && monster1_x == k) {
+						std::cout << "#";
+					}
+					if (player_y == i && player_x == k) {
+						std::cout << "O";
+					}
+				}
+				else if (bitmap[i][k] == true) {
+					std::cout << " ";
+				}
+				else if (bitmap[i][k] == false) {
+					std::cout << "X";
+				}
+			}	
+			std::cout << std::endl;
+		}
+
+		Sleep(100); // wait for 1 second
+	}
+}
+
+void keyinput() {
+	while (true)
+	{
+		/*if (GetAsyncKeyState(0x41) & 0x8000) //a
+		{
+			std::cout << "x:" << x << " " << "y:" << y << std::endl;
+		}*/
+		if (GetAsyncKeyState(0x25) & 0x8000) //left
+		{
+			
+			if (bitmap[player_y][player_x-1] == true) {
+				player_x--;
+			}
+		}
+		if (GetAsyncKeyState(0x26) & 0x8000) //up
+		{
+			
+			if (bitmap[player_y-1][player_x] == true) {
+				player_y--;
+			}
+		}
+		if (GetAsyncKeyState(0x27) & 0x8000) //right
+		{
+			
+			if (bitmap[player_y][player_x+1] == true) {
+				player_x++;
+			}
+		}
+		if (GetAsyncKeyState(0x28) & 0x8000) //down
+		{
+			
+			if (bitmap[player_y+1][player_x] == true) {
+				player_y++;
+			}
+		}
+		/*to not go into walls, before x++ if (bitmap[y][x+1]=false, do nothing otherwise increment*/
+		Sleep(250);
+	}
+}
+
+
+int main() {
+	
+	std::thread thread1(update_screen);
+	std::thread thread2(keyinput);
+	std::thread thread3(pathfindingchase);
+	/*std::thread thread4(pathfindingflee);*/
+	/*std::thread thread5(statechange);*/
+
+
+	
+}
