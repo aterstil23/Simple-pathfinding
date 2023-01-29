@@ -4,4 +4,10 @@ The function removecells1 used in the function pathfinding1 removes all paths th
 I have one enemy which is monster1 that is represented by the symbol "#". And the player controlled by arrows key is represented by "O".
 Unfortunetaly i didn't use any librairies to represent the graphics in a better way (so the labyrinth is printed in a loop after each iteration the screen is cleared and the cursor is moved to the top right).
 I made the enemy monster go towards the player for 15 moves than retreat for 6 moves. (You can change that by timing the bool flags flee and chase to change value from true to false or false to true every time with a modulus operation that checks the state (number of total moves of enemy) is a multiple of the number of moves you want to chase it n+ the number of moves you it to flee m (state % (n+m)==0) and to switch from chase mode to flee mode you can verify if ((state-n)%(n+m)==0).
+Even though there is a pop up of debug error, i just ignored it and it still worked.
+![image](https://user-images.githubusercontent.com/121896803/215297077-85da37b4-d12b-4431-a288-9f1bc098858d.png)
+One more exception to the functionality of the code is that when the monster reaches the player, the line in which the monster reached the player will be shifted to the right by 1 so the program works only if you manage to evade the monster otherwise you can still try to move away from it and the layout will return to normal if you gain distance from the monster.
+I added a second version of the code that removes the fleeing behaviour of the monster so you can see how the pathfinding algorithm from the monster to the player is efficient.
+
+
  
